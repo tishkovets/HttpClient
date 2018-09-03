@@ -1,0 +1,13 @@
+{
+  "name": "maximmatia/http-client",
+  "description": "http client",
+  "require": {
+    "php": ">=7",
+    "guzzlehttp/guzzle": ">=6"
+  },
+  "autoload": {
+    "psr-4": {
+      "HttpClient\\": "src/"
+    }
+  }
+}
