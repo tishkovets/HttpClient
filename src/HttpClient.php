@@ -22,7 +22,7 @@ class HttpClient
     CONST MAX_ATTEMPTS = 3;
     CONST SLEEP_ATTEMPTS = 5;
 
-    public function __construct(array $guzzleOptions, callable $getProxyCallback = null, array $proxyChangeLimits = [])
+    public function __construct(array $guzzleOptions = [], callable $getProxyCallback = null, array $proxyChangeLimits = [])
     {
         $this->client = new Client($guzzleOptions);
         $this->getProxyCallback = $getProxyCallback;
