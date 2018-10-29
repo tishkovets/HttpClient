@@ -3,9 +3,13 @@
   "description": "http client",
   "require": {
     "php": ">=7",
+    "ext-json": "*",
     "guzzlehttp/guzzle": ">=6"
   },
   "autoload": {
+    "files": [
+      "src/functions.php"
+    ],
     "psr-4": {
       "HttpClient\\": "src/"
     }

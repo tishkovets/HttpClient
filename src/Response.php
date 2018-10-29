@@ -1,0 +1,106 @@
+<?php
+
+namespace HttpClient;
+
+use \GuzzleHttp\Psr7\Request as GuzzleRequest;
+use \GuzzleHttp\Psr7\Response as GuzzleResponse;
+
+class Response
+{
+    protected $request;
+    protected $response;
+
+    public function getRequest(): GuzzleRequest
+    {
+        return $this->request;
+    }
+
+    public function getResponse(): GuzzleResponse
+    {
+        return $this->response;
+    }
+
+
+    public function isJson()
+    {
+        return isJson($this->getBody());
+
+    }
+
+    public function parseJson($assoc = true)
+    {
+        return json_decode($this->getBody(), $assoc);
+
+    }
+
+    /**
+     * Получение raw тела ответа
+     *
+     * @return string
+     */
+    public function getBody()
+    {
+        return (string)$this->getResponse()->getBody();
+    }
+
+    /**
+     * Получение редеректа
+     *
+     * @return null|string
+     */
+    public function getRedirect()
+    {
+        $redirect = $this->getResponse()->getHeaderLine('Location');
+        if ($redirect) {
+            if (strpos($redirect, 'http') !== 0) {
+                $p = parse_url($this->getRequest()->getUri()->__toString());
+                $redirect = $p['scheme'] . '://' . $p['host'] . (strpos($redirect, '/') !== 0 ? '/' : '') . $redirect;
+            }
+
+            return $redirect;
+        } else {
+            return null;
+        }
+    }
+
+    public function __invoke(GuzzleRequest $request, GuzzleResponse $response): Response
+    {
+        $this->request = $request;
+        $this->response = $response;
+
+        return $this;
+    }
+
+    /**
+     * @param $name
+     * @param $arguments
+     *
+     * @return mixed
+     */
+    public function __call($name, $arguments)
+    {
+        if (method_exists($this->response, $name)) {
+            return call_user_func_array([$this->response, $name], $arguments);
+        }
+
+        trigger_error('Call to undefined method ' . __CLASS__ . '::' . $name . '()', E_USER_ERROR);
+    }
+
+    /**
+     * @param Response $finalResponse
+     *
+     * @return \Closure
+     */
+    public static function modifyResponse(Response $finalResponse)
+    {
+        return function (callable $handler) use ($finalResponse) {
+            return function (GuzzleRequest $request, array $options) use ($handler, $finalResponse) {
+                return $handler($request, $options, $finalResponse)->then(
+                    function (GuzzleResponse $response) use ($request, $finalResponse) {
+                        return $finalResponse($request, $response);
+                    }
+                );
+            };
+        };
+    }
+}
