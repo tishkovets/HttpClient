@@ -66,6 +66,13 @@ class Request
         return $this;
     }
 
+    public function removeHeaders()
+    {
+        $this->options['headers'] = [];
+
+        return $this;
+    }
+
     public function addQuery($key, $value)
     {
         $this->options['query'][$key] = $value;
