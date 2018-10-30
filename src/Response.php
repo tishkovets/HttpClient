@@ -27,7 +27,7 @@ class Response
 
     }
 
-    public function parseJson($assoc = true)
+    public function parseJson($assoc = false)
     {
         return json_decode($this->getBody(), $assoc);
 
