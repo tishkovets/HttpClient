@@ -10,12 +10,12 @@ class Response
     protected $request;
     protected $response;
 
-    public function getRequest(): GuzzleRequest
+    public function getParentRequest(): GuzzleRequest
     {
         return $this->request;
     }
 
-    public function getResponse(): GuzzleResponse
+    public function getParentResponse(): GuzzleResponse
     {
         return $this->response;
     }
@@ -40,7 +40,7 @@ class Response
      */
     public function getBody()
     {
-        return (string)$this->getResponse()->getBody();
+        return (string)$this->getParentResponse()->getBody();
     }
 
     /**
@@ -50,10 +50,10 @@ class Response
      */
     public function getRedirect()
     {
-        $redirect = $this->getResponse()->getHeaderLine('Location');
+        $redirect = $this->getParentResponse()->getHeaderLine('Location');
         if ($redirect) {
             if (strpos($redirect, 'http') !== 0) {
-                $p = parse_url($this->getRequest()->getUri()->__toString());
+                $p = parse_url($this->getParentRequest()->getUri()->__toString());
                 $redirect = $p['scheme'] . '://' . $p['host'] . (strpos($redirect, '/') !== 0 ? '/' : '') . $redirect;
             }
 
