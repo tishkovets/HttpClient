@@ -27,7 +27,7 @@ class Request
 
     public function getMethod()
     {
-        if (sizeof($this->options['form_params']) > 0 OR sizeof($this->options['json']) > 0 OR sizeof($this->options['multipart']) > 0) {
+        if (sizeof(@$this->options['form_params']) > 0 OR sizeof(@$this->options['json']) > 0 OR sizeof(@$this->options['multipart']) > 0) {
             return 'POST';
         }
 
