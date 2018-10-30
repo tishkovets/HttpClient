@@ -41,7 +41,7 @@ class HttpClient
 
         if (array_key_exists('proxyCallbackLimits', $config) AND !is_array($config['proxyCallbackLimits'])) {
             $this->proxyCallbackLimits = self::DefaultProxyCallbackLimits;
-        } else {
+        } elseif (array_key_exists('proxyCallbackLimits', $config)) {
             $this->proxyCallbackLimits = $config['proxyCallbackLimits'] + self::DefaultProxyCallbackLimits;
         }
 
