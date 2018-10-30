@@ -15,7 +15,8 @@ class Request
         $this->options = $options;
     }
 
-    public function getHttpClient(): HttpClient {
+    public function getHttpClient(): HttpClient
+    {
         return $this->httpClient;
     }
 
@@ -59,6 +60,15 @@ class Request
         return $this;
     }
 
+    public function addHeaders($options)
+    {
+        foreach ($options as $key => $value) {
+            $this->addHeader($key, $value);
+        }
+
+        return $this;
+    }
+
     public function removeHeader($key)
     {
         unset($this->options['headers'][$key]);
@@ -80,6 +90,15 @@ class Request
         return $this;
     }
 
+    public function addQueryBulk($options)
+    {
+        foreach ($options as $key => $value) {
+            $this->addQuery($key, $value);
+        }
+
+        return $this;
+    }
+
     public function fetchQuery()
     {
         if (array_key_exists('query', $this->options)) {
@@ -96,6 +115,15 @@ class Request
         return $this;
     }
 
+    public function addPostBulk($options)
+    {
+        foreach ($options as $key => $value) {
+            $this->addPost($key, $value);
+        }
+
+        return $this;
+    }
+
     public function fetchPost()
     {
         if (array_key_exists('form_params', $this->options)) {
@@ -108,6 +136,15 @@ class Request
     public function addJson($key, $value)
     {
         $this->options['json'][$key] = $value;
+
+        return $this;
+    }
+
+    public function addJsonBulk($options)
+    {
+        foreach ($options as $key => $value) {
+            $this->addJson($key, $value);
+        }
 
         return $this;
     }
