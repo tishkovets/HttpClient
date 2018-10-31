@@ -6,21 +6,21 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
 use GuzzleHttp\Exception\ConnectException;
-use HttpClient\Exception\HttpClientException;
+use GuzzleHttp\HandlerStack;
 
 class HttpClient
 {
     protected $config;
     protected $client;
-    protected $isResponseModified = false;
-    protected $proxyCallbackMetrics = [
+
+    protected $proxyMetrics = [
         'changeAmount'  => 0,
         'connectAmount' => 0,
     ];
-    protected $proxyCallbackLimits = [];
-    protected $proxyData = null;
+    protected $proxyLimits = [];
+    protected $proxyCallback;
 
-    const DefaultProxyCallbackLimits = [
+    const DefaultProxyLimits = [
         'changeLimit'   => 1,
         'connectLimit'  => 2,
         'sleepInterval' => 5,
@@ -30,19 +30,13 @@ class HttpClient
      * HttpClient constructor.
      *
      * @param array $config
-     *
-     * @throws HttpClientException
      */
     public function __construct(array $config = [])
     {
-        if (array_key_exists('proxyCallback', $config) AND !is_callable($config['proxyCallback'])) {
-            throw new HttpClientException('Bad config.');
-        }
-
-        if (array_key_exists('proxyCallbackLimits', $config) AND !is_array($config['proxyCallbackLimits'])) {
-            $this->proxyCallbackLimits = self::DefaultProxyCallbackLimits;
-        } elseif (array_key_exists('proxyCallbackLimits', $config)) {
-            $this->proxyCallbackLimits = $config['proxyCallbackLimits'] + self::DefaultProxyCallbackLimits;
+        if (array_key_exists('proxyLimits', $config) AND !is_array($config['proxyLimits'])) {
+            $this->proxyLimits = self::DefaultProxyLimits;
+        } elseif (array_key_exists('proxyLimits', $config)) {
+            $this->proxyLimits = $config['proxyLimits'] + self::DefaultProxyLimits;
         }
 
         if (array_key_exists('cookies', $config) AND is_array($config['cookies'])) {
@@ -62,12 +56,10 @@ class HttpClient
         return new Request($this, $uri, $options);
     }
 
-    public function runProxyCallback(callable $callback)
+    public function getProxyCallbackInfo()
     {
-        if ($this->proxyCallbackMetrics['changeAmount'] < $this->proxyCallbackLimits['changeLimit']) {
-            $this->proxyCallbackMetrics['changeAmount']++;
-
-            return call_user_func($callback);
+        if ($this->proxyCallback instanceof ProxyCallbackInterface) {
+            return $this->proxyCallback->getInfo();
         }
 
         return null;
@@ -87,42 +79,37 @@ class HttpClient
         }
 
         $options = $request->getOptions();
-        if ($this->isResponseModified == false) {
-            if (!array_key_exists('handler', $options)) {
-                $options['handler'] = \GuzzleHttp\HandlerStack::create();
-            }
-            $options['handler']->unshift(Response::modifyResponse($response));
-            $this->isResponseModified = true;
+        if (!array_key_exists('handler', $options)) {
+            $options['handler'] = HandlerStack::create();
         }
+        $options['handler']->unshift(Response::modifyResponse($response));
 
         try {
             $response = $this->client->request($request->getMethod(), $request->getUri(), $options);
-            $this->proxyCallbackMetrics = [
+            $this->proxyMetrics = [
                 'change'  => 0,
                 'connect' => 0,
             ];
 
             return $response;
         } catch (ConnectException $e) {
-            if (array_key_exists('proxyCallback', $options)) {
-                if (is_null($this->proxyData)) {
-                    $this->proxyData = $this->runProxyCallback($options['proxyCallback']);
-                } elseif ($this->proxyCallbackMetrics['connectAmount'] >= $this->proxyCallbackLimits['connectLimit']) {
-                    $this->proxyData = null;
-                    sleep($this->proxyCallbackLimits['sleepInterval']);
-                    $this->proxyData = $this->runProxyCallback($options['proxyCallback']);
-                } else {
-                    $this->proxyCallbackMetrics['connectAmount']++;
-                    sleep($this->proxyCallbackLimits['sleepInterval']);
-                }
-
-                if (is_array($this->proxyData) AND array_key_exists('proxy', $this->proxyData)) {
-                    if (array_key_exists('type', $this->proxyData) AND $this->proxyData['type'] == 'socks5') {
-                        $proxy = 'socks5://' . $this->proxyData['proxy'];
-                    } else {
-                        $proxy = $this->proxyData['proxy'];
+            if (array_key_exists('proxy', $options) OR array_key_exists('proxyCallback', $options)) {
+                $proxy = null;
+                if (!$this->isProxyConnectExceed()) {
+                    $proxy = $options['proxy'];
+                    $this->proxyMetrics['connectAmount']++;
+                    sleep($this->proxyLimits['sleepInterval']);
+                } elseif ($options['proxyCallback'] instanceof ProxyCallbackInterface AND !$this->isProxyChangeExceed()) {
+                    if (!is_null($this->proxyCallback)) {
+                        sleep($this->proxyLimits['sleepInterval']);
+                        $this->proxyMetrics['changeAmount']++;
                     }
 
+                    $this->proxyCallback = $options['proxyCallback'];
+                    $proxy = $this->proxyCallback->getProxy();
+                }
+
+                if (!is_null($proxy)) {
                     $request->addOption('proxy', $proxy);
 
                     return $this->send($request, $response);
@@ -152,5 +139,30 @@ class HttpClient
         }
 
         return $cookies;
+    }
+
+
+    /**
+     * @return bool
+     */
+    protected function isProxyConnectExceed(): bool
+    {
+        if ($this->proxyMetrics['connectAmount'] >= $this->proxyLimits['connectLimit']) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isProxyChangeExceed(): bool
+    {
+        if ($this->proxyMetrics['changeAmount'] >= $this->proxyLimits['changeLimit']) {
+            return true;
+        }
+
+        return false;
     }
 }
