@@ -2,8 +2,10 @@
 
 namespace HttpClient;
 
-interface ProxyCallbackInterface
+interface ProxyInterface
 {
+    public function assignProxy();
+
     public function getProxy();
 
     public function getInfo();
