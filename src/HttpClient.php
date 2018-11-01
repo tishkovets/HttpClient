@@ -85,10 +85,7 @@ class HttpClient
 
         try {
             $response = $this->client->request($request->getMethod(), $request->getUri(), $options);
-            $this->proxyMetrics = [
-                'change'  => 0,
-                'connect' => 0,
-            ];
+            $this->proxyMetrics['connect'] = 0;
 
             return $response;
         } catch (ConnectException $e) {
