@@ -71,7 +71,7 @@ class HttpClient
         }
 
 
-        if ($options['proxy'] instanceof ProxyInterface) {
+        if (array_key_exists('proxy', $options) AND $options['proxy'] instanceof ProxyInterface) {
             $this->proxy = $options['proxy'];
             $options['proxy'] = $options['proxy']->getProxy();
         }
