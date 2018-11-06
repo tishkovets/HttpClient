@@ -138,6 +138,14 @@ class HttpClient
         return $cookies;
     }
 
+    public function getProxy()
+    {
+        if ($this->proxy instanceof ProxyInterface) {
+            return $this->proxy;
+        }
+
+        return null;
+    }
 
     /**
      * @return bool

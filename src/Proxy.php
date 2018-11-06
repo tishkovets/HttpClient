@@ -45,10 +45,12 @@ class Proxy implements ProxyInterface
         return $this->proxy;
     }
 
-    public function getInfo($option = null): array
+    public function getInfo($option = null)
     {
         if (is_null($option)) {
             return $this->info;
-        } else return @$this->info[$option];
+        } else {
+            return @$this->info[$option];
+        }
     }
 }
