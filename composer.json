@@ -1,5 +1,5 @@
 {
-  "name": "maximmatia/http-client",
+  "name": "maximmatia/httpclient",
   "description": "http client",
   "require": {
     "php": ">=7",
