@@ -32,7 +32,18 @@ class HttpClient
      */
     public function __construct(array $config = [])
     {
-        $this->client = new Client();
+        $guzzleConfig = [];
+        if (array_key_exists('cookies', $config) AND is_array($config['cookies'])) {
+            $guzzleConfig['cookies'] = new CookieJar(false, $config['cookies']);
+            unset($config['cookies']);
+        } elseif (array_key_exists('cookies', $config) AND $config['cookies'] instanceof CookieJar) {
+            $guzzleConfig['cookies'] = $config['cookies'];
+            unset($config['cookies']);
+        } else {
+            $guzzleConfig['cookies'] = new CookieJar(false, []);
+        }
+
+        $this->client = new Client($guzzleConfig);
         $this->config = $config;
     }
 
@@ -64,12 +75,6 @@ class HttpClient
             $options['handler'] = HandlerStack::create();
         }
         $options['handler']->unshift(Response::modifyResponse($response));
-
-        # set cookies as array
-        if (array_key_exists('cookies', $options) AND is_array($options['cookies'])) {
-            $options['cookies'] = new CookieJar(false, $options['cookies']);
-        }
-
 
         if (array_key_exists('proxy', $options) AND $options['proxy'] instanceof ProxyInterface) {
             $this->proxy = $options['proxy'];
