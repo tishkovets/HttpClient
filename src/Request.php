@@ -10,7 +10,7 @@ class Request
 
     public function __construct(HttpClient $httpClient, $uri, array $options = [])
     {
-        $this->httpClient = $httpClient;
+        $this->httpClient = &$httpClient;
         $this->uri = $uri;
         $this->options = $options;
     }
