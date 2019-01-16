@@ -41,7 +41,11 @@ class Request
 
     public function addOption($key, $value)
     {
-        $this->options[$key] = $value;
+        if (is_array($value) AND is_array($this->options[$key])) {
+            $this->options[$key] = $value + $this->options[$key];
+        } else {
+            $this->options[$key] = $value;
+        }
 
         return $this;
     }
