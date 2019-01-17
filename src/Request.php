@@ -103,13 +103,18 @@ class Request
         return $this;
     }
 
-    public function fetchQuery()
+    public function fetchQuery(): array
     {
         if (array_key_exists('query', $this->options)) {
             return $this->options['query'];
         }
 
         return [];
+    }
+
+    public function fetchQueryKey($key)
+    {
+        return @$this->options['query'][$key];
     }
 
     public function addPost($key, $value)
@@ -128,13 +133,18 @@ class Request
         return $this;
     }
 
-    public function fetchPost()
+    public function fetchPost(): array
     {
         if (array_key_exists('form_params', $this->options)) {
             return $this->options['form_params'];
         }
 
         return [];
+    }
+
+    public function fetchPostKey($key)
+    {
+        return @$this->options['form_params'][$key];
     }
 
     public function addJson($key, $value)
@@ -153,13 +163,18 @@ class Request
         return $this;
     }
 
-    public function fetchJson()
+    public function fetchJson(): array
     {
         if (array_key_exists('json', $this->options)) {
             return $this->options['json'];
         }
 
         return [];
+    }
+
+    public function fetchJsonKey($key)
+    {
+        return @$this->options['json'][$key];
     }
 
     public function addMultipart($name, $contents, array $headers = [], $filename = null)
