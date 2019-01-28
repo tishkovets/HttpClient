@@ -2,6 +2,8 @@
 
 namespace HttpClient;
 
+use GuzzleHttp\Cookie\CookieJar;
+
 class Request
 {
     protected $httpClient;
@@ -41,11 +43,18 @@ class Request
 
     public function addOption($key, $value)
     {
-        if (is_array($value) AND @is_array($this->options[$key])) {
+        if (is_array($value) AND is_array(@$this->options[$key])) {
             $this->options[$key] = $value + $this->options[$key];
         } else {
             $this->options[$key] = $value;
         }
+
+        return $this;
+    }
+
+    public function setOption($key, $value)
+    {
+        $this->options[$key] = $value;
 
         return $this;
     }
@@ -185,6 +194,31 @@ class Request
             ]
             + (sizeof($headers) > 0 ? ['headers' => $headers] : [])
             + (!is_null($filename) ? ['filename' => $filename] : []);
+
+        return $this;
+    }
+
+    public function setCookies($cookies)
+    {
+        if (is_array($cookies)) {
+            $this->setOption('cookies', new CookieJar(false, $cookies));
+        } elseif ($cookies instanceof CookieJar) {
+            $this->setOption('cookies', $cookies);
+        }
+
+        return $this;
+    }
+
+    public function addCookies($cookies)
+    {
+        if (is_array($cookies)) {
+            $this->setOption('cookies',
+                new CookieJar(false, array_merge($this->getHttpClient()->getCookies(), $cookies)));
+        } elseif ($cookies instanceof CookieJar) {
+            $this->setOption('cookies',
+                new CookieJar(false, array_merge($this->getHttpClient()->getCookies(), $cookies->toArray())));
+            $this->setOption('cookies', $cookies);
+        }
 
         return $this;
     }

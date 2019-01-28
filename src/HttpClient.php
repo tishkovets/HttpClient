@@ -44,6 +44,19 @@ class HttpClient
         }
 
         $this->client = new Client($guzzleConfig);
+
+        $this->config = $config;
+    }
+
+    /**
+     * @param array $config
+     */
+    public function setConfig(array $config)
+    {
+        if (array_key_exists('cookies', $config) AND is_array($config['cookies'])) {
+            $config['cookies'] = new CookieJar(false, $config['cookies']);
+        }
+
         $this->config = $config;
     }
 
