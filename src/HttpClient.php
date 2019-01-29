@@ -107,8 +107,8 @@ class HttpClient
 
             return $response;
         } catch (ConnectException $e) {
+            $this->proxyMetrics['connectAmount']++;
             if (array_key_exists('proxy', $options)) {
-                $this->proxyMetrics['connectAmount']++;
                 $proxy = null;
 
                 if (!$this->isProxyConnectExceed()) {
