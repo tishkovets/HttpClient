@@ -12,17 +12,17 @@ class HttpClient
 {
     protected $config;
     protected $client;
-    protected $proxyMetrics = [
-        'changeAmount'  => 0,
-        'connectAmount' => 0,
+    protected $connectMetrics = [
+        'proxyChanges' => 0,
+        'attempts'     => 0,
     ];
-    protected $proxyLimits = [];
+    protected $connectLimits = [];
     protected $proxy;
 
-    const DefaultProxyLimits = [
-        'changeLimit'   => 0,
-        'connectLimit'  => 1,
-        'sleepInterval' => 0,
+    const DefaultConnectLimits = [
+        'proxyChanges' => 0,
+        'attempts'     => 1,
+        'sleep'        => 0,
     ];
 
     /**
@@ -94,44 +94,46 @@ class HttpClient
             $options['proxy'] = $options['proxy']->getProxy();
         }
 
-        if (array_key_exists('proxyLimits', $options) AND !is_array($options['proxyLimits'])) {
-            $this->proxyLimits = self::DefaultProxyLimits;
-        } elseif (array_key_exists('proxyLimits', $options)) {
-            $this->proxyLimits = $options['proxyLimits'] + self::DefaultProxyLimits;
+        if (array_key_exists('connectLimits', $options) AND !is_array($options['connectLimits'])) {
+            $this->connectLimits = self::DefaultConnectLimits;
+        } elseif (array_key_exists('connectLimits', $options)) {
+            $this->connectLimits = $options['connectLimits'] + self::DefaultConnectLimits;
         }
 
 
         try {
             $response = $this->client->request($request->getMethod(), $request->getUri(), $options);
-            $this->proxyMetrics['connect'] = 0;
+            $this->connectMetrics['attempts'] = 0;
 
             return $response;
         } catch (ConnectException $e) {
-            $this->proxyMetrics['connectAmount']++;
+            $retry = false;
+            $this->connectMetrics['attempts']++;
             if (array_key_exists('proxy', $options)) {
                 $proxy = null;
 
                 if (!$this->isProxyConnectExceed()) {
                     $proxy = $options['proxy'];
-                    sleep($this->proxyLimits['sleepInterval']);
+                    sleep($this->connectLimits['sleep']);
                 } elseif ($this->proxy instanceof ProxyInterface AND !$this->isProxyChangeExceed()) {
                     $proxy = $this->proxy->assignProxy();
-                    $this->proxyMetrics['changeAmount']++;
-                    $this->proxyMetrics['connectAmount'] = 0;
-                    sleep($this->proxyLimits['sleepInterval']);
+                    $this->connectMetrics['proxyChanges']++;
+                    $this->connectMetrics['attempts'] = 0;
+                    sleep($this->connectLimits['sleep']);
                 }
 
                 if (!is_null($proxy)) {
                     if ($proxy != $options['proxy']) {
                         $request->addOption('proxy', $proxy);
                     }
-
-                    return $this->send($request, $response);
+                    $retry = true;
                 }
-
             } elseif (!$this->isProxyConnectExceed()) {
-                sleep($this->proxyLimits['sleepInterval']);
+                $retry = true;
+                sleep($this->connectLimits['sleep']);
+            }
 
+            if ($retry) {
                 return $this->send($request, $response);
             }
 
@@ -174,7 +176,7 @@ class HttpClient
      */
     protected function isProxyConnectExceed(): bool
     {
-        if ($this->proxyMetrics['connectAmount'] >= $this->proxyLimits['connectLimit']) {
+        if ($this->connectMetrics['attempts'] >= $this->connectLimits['attempts']) {
             return true;
         }
 
@@ -186,7 +188,7 @@ class HttpClient
      */
     protected function isProxyChangeExceed(): bool
     {
-        if ($this->proxyMetrics['changeAmount'] >= $this->proxyLimits['changeLimit']) {
+        if ($this->connectMetrics['proxyChanges'] >= $this->connectLimits['proxyChanges']) {
             return true;
         }
 
