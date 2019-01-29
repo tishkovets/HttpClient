@@ -129,6 +129,10 @@ class HttpClient
                     return $this->send($request, $response);
                 }
 
+            } elseif (!$this->isProxyConnectExceed()) {
+                sleep($this->proxyLimits['sleepInterval']);
+
+                return $this->send($request, $response);
             }
 
             throw $e;
