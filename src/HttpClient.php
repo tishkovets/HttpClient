@@ -60,6 +60,11 @@ class HttpClient
         $this->config = $config;
     }
 
+    public function setConfigKey($key, $value)
+    {
+        $this->config[$key] = $value;
+    }
+
     public function request($uri, array $options = []): Request
     {
         if (sizeof($options) === 0) {
