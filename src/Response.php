@@ -4,6 +4,7 @@ namespace HttpClient;
 
 use \GuzzleHttp\Psr7\Request as GuzzleRequest;
 use \GuzzleHttp\Psr7\Response as GuzzleResponse;
+use function GuzzleHttp\Psr7\stream_for;
 
 class Response
 {
@@ -61,6 +62,13 @@ class Response
         } else {
             return null;
         }
+    }
+
+    public function convertEncoding($from, $to)
+    {
+        $this->response = $this->response->withBody(stream_for(mb_convert_encoding($this->getBody(), $to, $from)));
+
+        return $this;
     }
 
     public function __invoke(GuzzleRequest $request, GuzzleResponse $response): Response

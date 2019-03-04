@@ -4,6 +4,7 @@
   "require": {
     "php": ">=7",
     "ext-json": "*",
+    "ext-mbstring": "*",
     "guzzlehttp/guzzle": ">=6"
   },
   "autoload": {
