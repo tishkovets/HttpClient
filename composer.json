@@ -3,8 +3,8 @@
   "description": "http client",
   "require": {
     "php": ">=7",
-    "ext-json": "*",
     "ext-mbstring": "*",
+    "ext-json": "*",
     "guzzlehttp/guzzle": ">=6"
   },
   "autoload": {
