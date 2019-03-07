@@ -10,11 +10,17 @@ class Request
     protected $uri;
     protected $options = [];
 
-    public function __construct(HttpClient $httpClient, $uri, array $options = [])
+    public function __construct(HttpClient $httpClient, $uri, array $specified = [])
     {
         $this->httpClient = &$httpClient;
         $this->uri = $uri;
-        $this->options = $options;
+        $this->options = $httpClient->getConfig();
+
+        foreach ($specified as $method => $data) {
+            if (method_exists($this, $method)) {
+                $this->$method(...$data);
+            }
+        }
     }
 
     public function getHttpClient(): HttpClient

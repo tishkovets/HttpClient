@@ -49,6 +49,14 @@ class HttpClient
     }
 
     /**
+     * @return array
+     */
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
+
+    /**
      * @param array $config
      */
     public function setConfig(array $config)
@@ -65,13 +73,9 @@ class HttpClient
         $this->config[$key] = $value;
     }
 
-    public function request($uri, array $options = []): Request
+    public function request($uri, array $specified = []): Request
     {
-        if (sizeof($options) === 0) {
-            $options = $this->config;
-        }
-
-        return new Request($this, $uri, $options);
+        return new Request($this, $uri, $specified);
     }
 
     /**
