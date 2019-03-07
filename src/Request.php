@@ -18,7 +18,9 @@ class Request
 
         foreach ($specified as $method => $data) {
             if (method_exists($this, $method)) {
-                $this->$method(...$data);
+                foreach ($data as $key => $value) {
+                    $this->$method($key, $value);
+                }
             }
         }
     }
