@@ -16,11 +16,10 @@ class Request
         $this->uri = $uri;
         $this->options = $httpClient->getConfig();
 
-        foreach ($specified as $method => $data) {
-            if (method_exists($this, $method)) {
-                foreach ($data as $key => $value) {
-                    $this->$method($key, $value);
-                }
+        foreach ($specified as $item) {
+            if (is_array($item) AND method_exists($this, $item[0])) {
+                $method = array_shift($item);
+                $this->$method(...$item);
             }
         }
     }
