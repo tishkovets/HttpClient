@@ -2,6 +2,7 @@
 
 namespace HttpClient;
 
+use Closure;
 use \GuzzleHttp\Psr7\Request as GuzzleRequest;
 use \GuzzleHttp\Psr7\Response as GuzzleResponse;
 use function GuzzleHttp\Psr7\stream_for;
@@ -97,7 +98,7 @@ class Response
     /**
      * @param Response $finalResponse
      *
-     * @return \Closure
+     * @return Closure
      */
     public static function modifyResponse(Response $finalResponse)
     {

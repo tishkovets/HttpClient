@@ -6,6 +6,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
 use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\HandlerStack;
 
 class HttpClient
@@ -32,19 +33,13 @@ class HttpClient
      */
     public function __construct(array $config = [])
     {
-        $guzzleConfig = [];
         if (array_key_exists('cookies', $config) AND is_array($config['cookies'])) {
-            $guzzleConfig['cookies'] = new CookieJar(false, $config['cookies']);
-            unset($config['cookies']);
-        } elseif (array_key_exists('cookies', $config) AND $config['cookies'] instanceof CookieJar) {
-            $guzzleConfig['cookies'] = $config['cookies'];
-            unset($config['cookies']);
-        } else {
-            $guzzleConfig['cookies'] = new CookieJar(false, []);
+            $config['cookies'] = new CookieJar(false, $config['cookies']);
+        } elseif (!(array_key_exists('cookies', $config) AND $config['cookies'] instanceof CookieJar)) {
+            $config['cookies'] = new CookieJar(false, []);
         }
 
-        $this->client = new Client($guzzleConfig);
-
+        $this->client = new Client(['cookies' => $config['cookies']]);
         $this->config = $config;
     }
 
@@ -54,6 +49,11 @@ class HttpClient
     public function getConfig(): array
     {
         return $this->config;
+    }
+
+    public function getConfigOption($option)
+    {
+        return @$this->config[$option];
     }
 
     /**
@@ -83,7 +83,7 @@ class HttpClient
      * @param Response|null $response
      *
      * @return Response
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws GuzzleException
      */
     public function send(Request $request, Response $response = null): Response
     {
@@ -153,10 +153,11 @@ class HttpClient
     public function getCookies()
     {
         $cookies = [];
-        if ($this->client->getConfig('cookies') instanceof CookieJar) {
+        if ($this->getConfigOption('cookies') instanceof CookieJar) {
+            #if ($this->client->getConfig('cookies') instanceof CookieJar) {
             $cookieArray = array_map(function ($array) {
                 return array_diff($array, [false, null]);
-            }, $this->client->getConfig('cookies')->toArray());
+            }, $this->getConfigOption('cookies')->toArray());
 
             foreach ($cookieArray as $cookie) { # delete outdated cookies
                 if (!($cookie instanceof SetCookie)) {
