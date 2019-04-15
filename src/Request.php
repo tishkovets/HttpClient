@@ -3,6 +3,7 @@
 namespace HttpClient;
 
 use GuzzleHttp\Cookie\CookieJar;
+use GuzzleHttp\Exception\GuzzleException;
 
 class Request
 {
@@ -234,7 +235,7 @@ class Request
      * @param Response|null $responseClass
      *
      * @return Response
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws GuzzleException
      */
     public function getResponse(Response $responseClass = null): Response
     {
