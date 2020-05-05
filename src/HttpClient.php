@@ -182,6 +182,14 @@ class HttpClient
     }
 
     /**
+     * @return Client
+     */
+    public function getClient(): Client
+    {
+        return $this->client;
+    }
+
+    /**
      * @return bool
      */
     protected function isProxyConnectExceed(): bool
