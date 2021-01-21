@@ -18,7 +18,7 @@ class Request
         $this->options = $httpClient->getConfig();
 
         foreach ($specified as $item) {
-            if (is_array($item) AND method_exists($this, $item[0])) {
+            if (is_array($item) and method_exists($this, $item[0])) {
                 $method = array_shift($item);
                 $this->$method(...$item);
             }
@@ -35,13 +35,13 @@ class Request
         return $this->uri;
     }
 
-    public function getMethod()
+    public function getMethod(): string
     {
-        if (isset($this->options['form_params']) AND is_array($this->options['form_params']) AND sizeof($this->options['form_params']) > 0) {
+        if (isset($this->options['form_params']) and is_array($this->options['form_params']) and sizeof($this->options['form_params']) > 0) {
             return 'POST';
-        } elseif (isset($this->options['multipart']) AND is_array($this->options['multipart']) AND sizeof($this->options['multipart']) > 0) {
+        } elseif (isset($this->options['multipart']) and is_array($this->options['multipart']) and sizeof($this->options['multipart']) > 0) {
             return 'POST';
-        } elseif (isset($this->options['json']) AND is_array($this->options['json']) AND sizeof($this->options['json']) > 0) {
+        } elseif (isset($this->options['json']) and is_array($this->options['json']) and sizeof($this->options['json']) > 0) {
             return 'POST';
         }
 
@@ -53,9 +53,9 @@ class Request
         return $this->options;
     }
 
-    public function addOption($key, $value)
+    public function addOption($key, $value): Request
     {
-        if (is_array($value) AND is_array(@$this->options[$key])) {
+        if (is_array($value) and is_array(@$this->options[$key])) {
             $this->options[$key] = $value + $this->options[$key];
         } else {
             $this->options[$key] = $value;
@@ -64,28 +64,28 @@ class Request
         return $this;
     }
 
-    public function setOption($key, $value)
+    public function setOption($key, $value): Request
     {
         $this->options[$key] = $value;
 
         return $this;
     }
 
-    public function removeOption($key)
+    public function removeOption($key): Request
     {
         unset($this->options[$key]);
 
         return $this;
     }
 
-    public function addHeader($key, $value)
+    public function addHeader($key, $value): Request
     {
         $this->options['headers'][$key] = $value;
 
         return $this;
     }
 
-    public function addHeaders($options)
+    public function addHeaders($options): Request
     {
         foreach ($options as $key => $value) {
             $this->addHeader($key, $value);
@@ -94,28 +94,28 @@ class Request
         return $this;
     }
 
-    public function removeHeader($key)
+    public function removeHeader($key): Request
     {
         unset($this->options['headers'][$key]);
 
         return $this;
     }
 
-    public function removeHeaders()
+    public function removeHeaders(): Request
     {
         $this->options['headers'] = [];
 
         return $this;
     }
 
-    public function addQuery($key, $value)
+    public function addQuery($key, $value): Request
     {
         $this->options['query'][$key] = $value;
 
         return $this;
     }
 
-    public function addQueryBulk($options)
+    public function addQueryBulk($options): Request
     {
         foreach ($options as $key => $value) {
             $this->addQuery($key, $value);
@@ -138,14 +138,14 @@ class Request
         return @$this->options['query'][$key];
     }
 
-    public function addPost($key, $value)
+    public function addPost($key, $value): Request
     {
         $this->options['form_params'][$key] = $value;
 
         return $this;
     }
 
-    public function addPostBulk($options)
+    public function addPostBulk($options): Request
     {
         foreach ($options as $key => $value) {
             $this->addPost($key, $value);
@@ -168,14 +168,14 @@ class Request
         return @$this->options['form_params'][$key];
     }
 
-    public function addJson($key, $value)
+    public function addJson($key, $value): Request
     {
         $this->options['json'][$key] = $value;
 
         return $this;
     }
 
-    public function addJsonBulk($options)
+    public function addJsonBulk($options): Request
     {
         foreach ($options as $key => $value) {
             $this->addJson($key, $value);
@@ -198,7 +198,7 @@ class Request
         return @$this->options['json'][$key];
     }
 
-    public function addMultipart($name, $contents, array $headers = [], $filename = null)
+    public function addMultipart($name, $contents, array $headers = [], $filename = null): Request
     {
         $this->options['multipart'][] = [
                 'name'     => $name,
@@ -210,7 +210,7 @@ class Request
         return $this;
     }
 
-    public function setCookies($cookies)
+    public function setCookies($cookies): Request
     {
         if (is_array($cookies)) {
             $this->setOption('cookies', new CookieJar(false, $cookies));
@@ -221,7 +221,7 @@ class Request
         return $this;
     }
 
-    public function addCookies($cookies)
+    public function addCookies($cookies): Request
     {
         if (is_array($cookies)) {
             $this->setOption('cookies',

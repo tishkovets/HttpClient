@@ -11,19 +11,16 @@ use GuzzleHttp\HandlerStack;
 
 class HttpClient
 {
-    protected $config;
-    protected $client;
-    protected $connectMetrics = [
-        'proxyChanges' => 0,
-        'attempts'     => 0,
+    public Client $guzzle;
+    protected array $config;
+    protected array $connectMetrics = [
+        'attempts' => 0,
     ];
-    protected $connectLimits = [];
-    protected $proxy;
+    protected array $connectLimits = [];
 
-    const DefaultConnectLimits = [
-        'proxyChanges' => 0,
-        'attempts'     => 1,
-        'sleep'        => 0,
+    const DEFAULT_CONNECT_LIMITS = [
+        'attempts' => 1,
+        'sleep'    => 0,
     ];
 
     /**
@@ -33,13 +30,13 @@ class HttpClient
      */
     public function __construct(array $config = [])
     {
-        if (array_key_exists('cookies', $config) AND is_array($config['cookies'])) {
+        if (array_key_exists('cookies', $config) and is_array($config['cookies'])) {
             $config['cookies'] = new CookieJar(false, $config['cookies']);
-        } elseif (!(array_key_exists('cookies', $config) AND $config['cookies'] instanceof CookieJar)) {
+        } elseif (!(array_key_exists('cookies', $config) and $config['cookies'] instanceof CookieJar)) {
             $config['cookies'] = new CookieJar(false, []);
         }
 
-        $this->client = new Client(['cookies' => $config['cookies']]);
+        $this->guzzle = new Client(['cookies' => $config['cookies']]);
         $this->config = $config;
     }
 
@@ -58,19 +55,25 @@ class HttpClient
 
     /**
      * @param array $config
+     *
+     * @return $this
      */
-    public function setConfig(array $config)
+    public function setConfig(array $config): HttpClient
     {
-        if (array_key_exists('cookies', $config) AND is_array($config['cookies'])) {
+        if (array_key_exists('cookies', $config) and is_array($config['cookies'])) {
             $config['cookies'] = new CookieJar(false, $config['cookies']);
         }
 
         $this->config = $config;
+
+        return $this;
     }
 
-    public function setConfigKey($key, $value)
+    public function setConfigKey($key, $value): HttpClient
     {
         $this->config[$key] = $value;
+
+        return $this;
     }
 
     public function request($uri, array $specified = []): Request
@@ -98,51 +101,21 @@ class HttpClient
         }
         $options['handler']->unshift(Response::modifyResponse($response));
 
-        if (array_key_exists('proxy', $options) AND $options['proxy'] instanceof ProxyInterface) {
-            $this->proxy = $options['proxy'];
-            $options['proxy'] = $options['proxy']->getProxy();
-        }
-
-        if (array_key_exists('connectLimits', $options) AND !is_array($options['connectLimits'])) {
-            $this->connectLimits = self::DefaultConnectLimits;
+        if (array_key_exists('connectLimits', $options) and !is_array($options['connectLimits'])) {
+            $this->connectLimits = self::DEFAULT_CONNECT_LIMITS;
         } elseif (array_key_exists('connectLimits', $options)) {
-            $this->connectLimits = $options['connectLimits'] + self::DefaultConnectLimits;
+            $this->connectLimits = $options['connectLimits'] + self::DEFAULT_CONNECT_LIMITS;
         }
 
 
         try {
-            $response = $this->client->request($request->getMethod(), $request->getUri(), $options);
+            $response = $this->guzzle->request($request->getMethod(), $request->getUri(), $options);
             $this->connectMetrics['attempts'] = 0;
 
             return $response;
         } catch (ConnectException $e) {
-            $retry = false;
             $this->connectMetrics['attempts']++;
-            if (array_key_exists('proxy', $options)) {
-                $proxy = null;
-
-                if (!$this->isProxyConnectExceed()) {
-                    $proxy = $options['proxy'];
-                    sleep($this->connectLimits['sleep']);
-                } elseif ($this->proxy instanceof ProxyInterface AND !$this->isProxyChangeExceed()) {
-                    $proxy = $this->proxy->assignProxy();
-                    $this->connectMetrics['proxyChanges']++;
-                    $this->connectMetrics['attempts'] = 0;
-                    sleep($this->connectLimits['sleep']);
-                }
-
-                if (!is_null($proxy)) {
-                    if ($proxy != $options['proxy']) {
-                        $request->addOption('proxy', $proxy);
-                    }
-                    $retry = true;
-                }
-            } elseif (!$this->isProxyConnectExceed()) {
-                $retry = true;
-                sleep($this->connectLimits['sleep']);
-            }
-
-            if ($retry) {
+            if ($this->connectMetrics['attempts'] < $this->connectLimits['attempts']) {
                 return $this->send($request, $response);
             }
 
@@ -150,11 +123,10 @@ class HttpClient
         }
     }
 
-    public function getCookies()
+    public function getCookies(): array
     {
         $cookies = [];
         if ($this->getConfigOption('cookies') instanceof CookieJar) {
-            #if ($this->client->getConfig('cookies') instanceof CookieJar) {
             $cookieArray = array_map(function ($array) {
                 return array_diff($array, [false, null]);
             }, $this->getConfigOption('cookies')->toArray());
@@ -172,44 +144,13 @@ class HttpClient
         return $cookies;
     }
 
-    public function getProxy()
-    {
-        if ($this->proxy instanceof ProxyInterface) {
-            return $this->proxy;
-        }
-
-        return null;
-    }
 
     /**
      * @return Client
      */
     public function getClient(): Client
     {
-        return $this->client;
+        return $this->guzzle;
     }
 
-    /**
-     * @return bool
-     */
-    protected function isProxyConnectExceed(): bool
-    {
-        if ($this->connectMetrics['attempts'] >= $this->connectLimits['attempts']) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @return bool
-     */
-    protected function isProxyChangeExceed(): bool
-    {
-        if ($this->connectMetrics['proxyChanges'] >= $this->connectLimits['proxyChanges']) {
-            return true;
-        }
-
-        return false;
-    }
 }

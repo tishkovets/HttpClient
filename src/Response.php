@@ -23,7 +23,7 @@ class Response
     }
 
 
-    public function isJson()
+    public function isJson(): bool
     {
         return isJson($this->getBody());
 
@@ -40,7 +40,7 @@ class Response
      *
      * @return string
      */
-    public function getBody()
+    public function getBody(): string
     {
         return (string)$this->getParentResponse()->getBody();
     }
@@ -50,7 +50,7 @@ class Response
      *
      * @return null|string
      */
-    public function getRedirect()
+    public function getRedirect(): ?string
     {
         $redirect = $this->getParentResponse()->getHeaderLine('Location');
         if ($redirect) {
@@ -65,7 +65,7 @@ class Response
         }
     }
 
-    public function convertEncoding($from, $to)
+    public function convertEncoding($from, $to): Response
     {
         $this->response = $this->response->withBody(stream_for(mb_convert_encoding($this->getBody(), $to, $from)));
 
@@ -100,7 +100,7 @@ class Response
      *
      * @return Closure
      */
-    public static function modifyResponse(Response $finalResponse)
+    public static function modifyResponse(Response $finalResponse): callable
     {
         return function (callable $handler) use ($finalResponse) {
             return function (GuzzleRequest $request, array $options) use ($handler, $finalResponse) {
