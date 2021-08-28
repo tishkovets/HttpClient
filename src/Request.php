@@ -10,6 +10,7 @@ class Request
     protected $httpClient;
     protected $uri;
     protected $options = [];
+    protected $method = null;
 
     public function __construct(HttpClient $httpClient, $uri, array $specified = [])
     {
@@ -37,7 +38,9 @@ class Request
 
     public function getMethod(): string
     {
-        if (isset($this->options['form_params']) and is_array($this->options['form_params']) and sizeof($this->options['form_params']) > 0) {
+        if (!is_null($this->method)) {
+            return $this->method;
+        } elseif (isset($this->options['form_params']) and is_array($this->options['form_params']) and sizeof($this->options['form_params']) > 0) {
             return 'POST';
         } elseif (isset($this->options['multipart']) and is_array($this->options['multipart']) and sizeof($this->options['multipart']) > 0) {
             return 'POST';
@@ -46,6 +49,13 @@ class Request
         }
 
         return 'GET';
+    }
+
+    public function setMethod($method)
+    {
+        $this->method = $method;
+
+        return $this;
     }
 
     public function getOptions(): array
