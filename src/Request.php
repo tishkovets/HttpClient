@@ -36,6 +36,13 @@ class Request
         return $this->uri;
     }
 
+    public function setUri($uri): self
+    {
+        $this->uri = $uri;
+
+        return $this;
+    }
+
     public function getMethod(): string
     {
         if (!is_null($this->method)) {
