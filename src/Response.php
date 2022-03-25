@@ -2,22 +2,15 @@
 
 namespace HttpClient;
 
-use Closure;
-use \GuzzleHttp\Psr7\Request as GuzzleRequest;
-use \GuzzleHttp\Psr7\Response as GuzzleResponse;
-use function GuzzleHttp\Psr7\stream_for;
+use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\ResponseInterface;
 
 class Response
 {
-    protected $request;
-    protected $response;
+    protected ResponseInterface $response;
+    protected string $baseUri;
 
-    public function getParentRequest(): GuzzleRequest
-    {
-        return $this->request;
-    }
-
-    public function getParentResponse(): GuzzleResponse
+    public function getParentResponse(): ResponseInterface
     {
         return $this->response;
     }
@@ -55,7 +48,7 @@ class Response
         $redirect = $this->getParentResponse()->getHeaderLine('Location');
         if ($redirect) {
             if (strpos($redirect, 'http') !== 0) {
-                $p = parse_url($this->getParentRequest()->getUri()->__toString());
+                $p = parse_url($this->baseUri);
                 $redirect = $p['scheme'] . '://' . $p['host'] . (strpos($redirect, '/') !== 0 ? '/' : '') . $redirect;
             }
 
@@ -67,14 +60,15 @@ class Response
 
     public function convertEncoding($from, $to): Response
     {
-        $this->response = $this->response->withBody(stream_for(mb_convert_encoding($this->getBody(), $to, $from)));
+        $body = Utils::streamFor(mb_convert_encoding($this->getBody(), $to, $from));
+        $this->response = $this->response->withBody($body);
 
         return $this;
     }
 
-    public function __invoke(GuzzleRequest $request, GuzzleResponse $response): Response
+    public function __invoke(ResponseInterface $response, $baseUri): Response
     {
-        $this->request = $request;
+        $this->baseUri = $baseUri;
         $this->response = $response;
 
         return $this;
@@ -93,23 +87,5 @@ class Response
         }
 
         trigger_error('Call to undefined method ' . __CLASS__ . '::' . $name . '()', E_USER_ERROR);
-    }
-
-    /**
-     * @param Response $finalResponse
-     *
-     * @return Closure
-     */
-    public static function modifyResponse(Response $finalResponse): callable
-    {
-        return function (callable $handler) use ($finalResponse) {
-            return function (GuzzleRequest $request, array $options) use ($handler, $finalResponse) {
-                return $handler($request, $options, $finalResponse)->then(
-                    function (GuzzleResponse $response) use ($request, $finalResponse) {
-                        return $finalResponse($request, $response);
-                    }
-                );
-            };
-        };
     }
 }

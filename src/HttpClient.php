@@ -94,13 +94,7 @@ class HttpClient
             $response = new Response();
         }
 
-        # modify response
         $options = $request->getOptions();
-        if (!array_key_exists('handler', $options)) {
-            $options['handler'] = HandlerStack::create();
-        }
-        $options['handler']->unshift(Response::modifyResponse($response));
-
         if (array_key_exists('connectLimits', $options) and !is_array($options['connectLimits'])) {
             $this->connectLimits = self::DEFAULT_CONNECT_LIMITS;
         } elseif (array_key_exists('connectLimits', $options)) {
@@ -109,10 +103,10 @@ class HttpClient
 
 
         try {
-            $response = $this->guzzle->request($request->getMethod(), $request->getUri(), $options);
+            $r = $this->guzzle->request($request->getMethod(), $request->getUri(), $options);
             $this->connectMetrics['attempts'] = 0;
 
-            return $response;
+            return $response($r, $request->getBaseUri());
         } catch (ConnectException $e) {
             $this->connectMetrics['attempts']++;
             if ($this->connectMetrics['attempts'] < $this->connectLimits['attempts']) {
@@ -144,7 +138,6 @@ class HttpClient
         return $cookies;
     }
 
-
     /**
      * @return Client
      */
@@ -152,5 +145,4 @@ class HttpClient
     {
         return $this->guzzle;
     }
-
 }

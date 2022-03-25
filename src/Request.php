@@ -43,6 +43,17 @@ class Request
         return $this;
     }
 
+    public function getBaseUri()
+    {
+        if (isset($options['base_uri'])) {
+            return $options['base_uri'];
+        }
+
+        $p = parse_url($this->uri);
+
+        return (isset($p['host']) and isset($p['scheme'])) ? ($p['scheme'] . '://' . $p['host']) : null;
+    }
+
     public function getMethod(): string
     {
         if (!is_null($this->method)) {
