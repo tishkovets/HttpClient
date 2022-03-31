@@ -45,8 +45,8 @@ class Request
 
     public function getBaseUri()
     {
-        if (isset($options['base_uri'])) {
-            return $options['base_uri'];
+        if (isset($this->options['base_uri'])) {
+            return $this->options['base_uri'];
         }
 
         $p = parse_url($this->uri);
