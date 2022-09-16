@@ -152,7 +152,7 @@ class Request
         return $this;
     }
 
-    public function fetchQuery(): array
+    public function query(): array
     {
         if (array_key_exists('query', $this->options)) {
             return $this->options['query'];
@@ -161,9 +161,16 @@ class Request
         return [];
     }
 
-    public function fetchQueryKey($key)
+    public function fetchQuery($key)
     {
         return @$this->options['query'][$key];
+    }
+
+    public function removeQuery($key): Request
+    {
+        unset($this->options['query'][$key]);
+
+        return $this;
     }
 
     public function addPost($key, $value): Request
@@ -182,7 +189,7 @@ class Request
         return $this;
     }
 
-    public function fetchPost(): array
+    public function post(): array
     {
         if (array_key_exists('form_params', $this->options)) {
             return $this->options['form_params'];
@@ -191,9 +198,16 @@ class Request
         return [];
     }
 
-    public function fetchPostKey($key)
+    public function fetchPost($key)
     {
         return @$this->options['form_params'][$key];
+    }
+
+    public function removePost($key): Request
+    {
+        unset($this->options['form_params'][$key]);
+
+        return $this;
     }
 
     public function addJson($key, $value): Request
@@ -212,7 +226,7 @@ class Request
         return $this;
     }
 
-    public function fetchJson(): array
+    public function json(): array
     {
         if (array_key_exists('json', $this->options)) {
             return $this->options['json'];
@@ -221,9 +235,17 @@ class Request
         return [];
     }
 
-    public function fetchJsonKey($key)
+    public function fetchJson($key)
     {
         return @$this->options['json'][$key];
+    }
+
+
+    public function removeJson($key): Request
+    {
+        unset($this->options['json'][$key]);
+
+        return $this;
     }
 
     public function addMultipart($name, $contents, array $headers = [], $filename = null): Request
