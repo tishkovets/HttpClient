@@ -7,16 +7,23 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class Request
 {
-    protected $httpClient;
-    protected $uri;
-    protected $options = [];
-    protected $method = null;
+    protected HttpClient $httpClient;
+    protected string $uri;
+    protected array $config = [];
+    protected string $method;
+
+    const DEFAULT_CONNECT_ATTEMPTS = 1;
+
+    /**
+     * sleep interval between connect attempts
+     */
+    const DEFAULT_CONNECT_SLEEP = 0;
 
     public function __construct(HttpClient $httpClient, $uri, array $specified = [])
     {
         $this->httpClient = &$httpClient;
         $this->uri = $uri;
-        $this->options = $httpClient->getConfig();
+        $this->config = $httpClient->getConfig();
 
         foreach ($specified as $item) {
             if (is_array($item) and method_exists($this, $item[0])) {
@@ -45,8 +52,8 @@ class Request
 
     public function getBaseUri()
     {
-        if (isset($this->options['base_uri'])) {
-            return $this->options['base_uri'];
+        if (isset($this->config['base_uri'])) {
+            return $this->config['base_uri'];
         }
 
         $p = parse_url($this->uri);
@@ -56,37 +63,42 @@ class Request
 
     public function getMethod(): string
     {
-        if (!is_null($this->method)) {
+        if (isset($this->method)) {
             return $this->method;
-        } elseif (isset($this->options['form_params']) and is_array($this->options['form_params']) and sizeof($this->options['form_params']) > 0) {
+        } elseif (isset($this->config['form_params']) and is_array($this->config['form_params']) and sizeof($this->config['form_params']) > 0) {
             return 'POST';
-        } elseif (isset($this->options['multipart']) and is_array($this->options['multipart']) and sizeof($this->options['multipart']) > 0) {
+        } elseif (isset($this->config['multipart']) and is_array($this->config['multipart']) and sizeof($this->config['multipart']) > 0) {
             return 'POST';
-        } elseif (isset($this->options['json']) and is_array($this->options['json']) and sizeof($this->options['json']) > 0) {
+        } elseif (isset($this->config['json']) and is_array($this->config['json']) and sizeof($this->config['json']) > 0) {
             return 'POST';
         }
 
         return 'GET';
     }
 
-    public function setMethod($method)
+    public function setMethod($method): self
     {
-        $this->method = $method;
+        $this->method = (string)$method;
 
         return $this;
     }
 
-    public function getOptions(): array
+    public function getConfig(): array
     {
-        return $this->options;
+        return $this->config;
+    }
+
+    public function getOption($name)
+    {
+        return $this->config[$name] ?? null;
     }
 
     public function addOption($key, $value): Request
     {
-        if (is_array($value) and is_array(@$this->options[$key])) {
-            $this->options[$key] = $value + $this->options[$key];
+        if (is_array($value) and isset($this->config[$key]) and is_array($this->config[$key])) {
+            $this->config[$key] = $value + $this->config[$key];
         } else {
-            $this->options[$key] = $value;
+            $this->config[$key] = $value;
         }
 
         return $this;
@@ -94,21 +106,21 @@ class Request
 
     public function setOption($key, $value): Request
     {
-        $this->options[$key] = $value;
+        $this->config[$key] = $value;
 
         return $this;
     }
 
     public function removeOption($key): Request
     {
-        unset($this->options[$key]);
+        unset($this->config[$key]);
 
         return $this;
     }
 
     public function addHeader($key, $value): Request
     {
-        $this->options['headers'][$key] = $value;
+        $this->config['headers'][$key] = $value;
 
         return $this;
     }
@@ -124,21 +136,21 @@ class Request
 
     public function removeHeader($key): Request
     {
-        unset($this->options['headers'][$key]);
+        unset($this->config['headers'][$key]);
 
         return $this;
     }
 
     public function removeHeaders(): Request
     {
-        $this->options['headers'] = [];
+        $this->config['headers'] = [];
 
         return $this;
     }
 
     public function addQuery($key, $value): Request
     {
-        $this->options['query'][$key] = $value;
+        $this->config['query'][$key] = $value;
 
         return $this;
     }
@@ -154,8 +166,8 @@ class Request
 
     public function query(): array
     {
-        if (array_key_exists('query', $this->options)) {
-            return $this->options['query'];
+        if (array_key_exists('query', $this->config)) {
+            return $this->config['query'];
         }
 
         return [];
@@ -163,19 +175,19 @@ class Request
 
     public function fetchQuery($key)
     {
-        return @$this->options['query'][$key];
+        return $this->config['query'][$key] ?? null;
     }
 
     public function removeQuery($key): Request
     {
-        unset($this->options['query'][$key]);
+        unset($this->config['query'][$key]);
 
         return $this;
     }
 
     public function addPost($key, $value): Request
     {
-        $this->options['form_params'][$key] = $value;
+        $this->config['form_params'][$key] = $value;
 
         return $this;
     }
@@ -191,8 +203,8 @@ class Request
 
     public function post(): array
     {
-        if (array_key_exists('form_params', $this->options)) {
-            return $this->options['form_params'];
+        if (array_key_exists('form_params', $this->config)) {
+            return $this->config['form_params'];
         }
 
         return [];
@@ -200,19 +212,19 @@ class Request
 
     public function fetchPost($key)
     {
-        return @$this->options['form_params'][$key];
+        return $this->config['form_params'][$key] ?? null;
     }
 
     public function removePost($key): Request
     {
-        unset($this->options['form_params'][$key]);
+        unset($this->config['form_params'][$key]);
 
         return $this;
     }
 
     public function addJson($key, $value): Request
     {
-        $this->options['json'][$key] = $value;
+        $this->config['json'][$key] = $value;
 
         return $this;
     }
@@ -228,8 +240,8 @@ class Request
 
     public function json(): array
     {
-        if (array_key_exists('json', $this->options)) {
-            return $this->options['json'];
+        if (array_key_exists('json', $this->config)) {
+            return $this->config['json'];
         }
 
         return [];
@@ -237,20 +249,20 @@ class Request
 
     public function fetchJson($key)
     {
-        return @$this->options['json'][$key];
+        return $this->config['json'][$key] ?? null;
     }
 
 
     public function removeJson($key): Request
     {
-        unset($this->options['json'][$key]);
+        unset($this->config['json'][$key]);
 
         return $this;
     }
 
     public function addMultipart($name, $contents, array $headers = [], $filename = null): Request
     {
-        $this->options['multipart'][] = [
+        $this->config['multipart'][] = [
                 'name'     => $name,
                 'contents' => $contents,
             ]
@@ -284,6 +296,49 @@ class Request
 
         return $this;
     }
+
+    public function setWrapper($response): Request
+    {
+        $this->setOption('wrapper', $response);
+
+        return $this;
+    }
+
+    public function getWrapper(): Response
+    {
+        if (isset($this->config['wrapper'])) {
+            if ($this->config['wrapper'] instanceof Response) {
+                return $this->config['wrapper'];
+            } elseif (is_string($this->config['wrapper'])) {
+                return new $this->config['wrapper'];
+            }
+        }
+
+        return new Response();
+    }
+
+    public function connectAttempts(): int
+    {
+        if (isset($this->config['connectLimits']['attempts'])) {
+            return (int)$this->config['connectLimits']['attempts']; #old way
+        } elseif (isset($this->config['connectAttempts'])) {
+            return (int)$this->config['connectAttempts'];
+        }
+
+        return self::DEFAULT_CONNECT_ATTEMPTS;
+    }
+
+    public function connectSleep(): int
+    {
+        if (isset($this->config['connectLimits']['sleep'])) {
+            return (int)$this->config['connectLimits']['sleep']; #old way
+        } elseif (isset($this->config['connectSleep'])) {
+            return (int)$this->config['connectSleep'];
+        }
+
+        return self::DEFAULT_CONNECT_SLEEP;
+    }
+
 
     /**
      * @param Response|null $responseClass

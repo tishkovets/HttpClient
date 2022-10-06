@@ -2,26 +2,19 @@
 
 namespace HttpClient;
 
+use Choval\Async;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
-use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Pool;
+use Psr\Http\Message\ResponseInterface;
 
 class HttpClient
 {
     public Client $guzzle;
     protected array $config;
-    protected array $connectMetrics = [
-        'attempts' => 0,
-    ];
-    protected array $connectLimits = [];
-
-    const DEFAULT_CONNECT_LIMITS = [
-        'attempts' => 1,
-        'sleep'    => 0,
-    ];
 
     /**
      * HttpClient constructor.
@@ -91,30 +84,70 @@ class HttpClient
     public function send(Request $request, Response $response = null): Response
     {
         if (is_null($response)) {
-            $response = new Response();
+            $response = $request->getWrapper();
         }
 
-        $options = $request->getOptions();
-        if (array_key_exists('connectLimits', $options) and !is_array($options['connectLimits'])) {
-            $this->connectLimits = self::DEFAULT_CONNECT_LIMITS;
-        } elseif (array_key_exists('connectLimits', $options)) {
-            $this->connectLimits = $options['connectLimits'] + self::DEFAULT_CONNECT_LIMITS;
-        }
+        $r = $this->guzzle->requestAsync($request->getMethod(), $request->getUri(), $request->getConfig())->then(
+            function (ResponseInterface $r) use ($request, $response) {
+                return $response($r, $request->getBaseUri());
+            },
+            function ($r) use ($request, $response) {
+                $currentAttempt = $request->getOption('_currentAttempt') ?? 0;
+                if (++$currentAttempt < $request->connectAttempts()) {
+                    $request->setOption('_currentAttempt', $currentAttempt);
+                    $sleep = $request->connectSleep();
+                    if ($sleep > 0) {
+                        #TODO async sleep
+                    }
 
-
-        try {
-            $r = $this->guzzle->request($request->getMethod(), $request->getUri(), $options);
-            $this->connectMetrics['attempts'] = 0;
-
-            return $response($r, $request->getBaseUri());
-        } catch (ConnectException $e) {
-            $this->connectMetrics['attempts']++;
-            if ($this->connectMetrics['attempts'] < $this->connectLimits['attempts']) {
-                return $this->send($request, $response);
+                    return $this->send($request, $response);
+                } else {
+                    throw $r;
+                }
             }
+        );
 
-            throw $e;
+        return $r->wait();
+    }
+
+    /**
+     * batch request handling
+     *
+     * @param array         $requests
+     * @param int           $concurrency
+     * @param callable|null $onFulfill
+     * this is delivered each successful response
+     * function ($response, $index) {}
+     *
+     * @param callable|null $onReject
+     * this is delivered each failed request
+     * function ($reason, $index) {}
+     *
+     * @return array
+     */
+    public function batch(
+        array $requests,
+        int $concurrency = 1,
+        callable $onFulfill = null,
+        callable $onReject = null
+    ): array {
+        $generator = function ($requests) {
+            foreach ($requests as $request) {
+                yield function () use ($request) {
+                    return $this->send($request);
+                };
+            }
+        };
+
+        $options = ['concurrency' => $concurrency];
+        if (isset($onFulfill)) {
+            $options['fulfilled'] = $onFulfill;
         }
+        if (isset($onReject)) {
+            $options['rejected'] = $onReject;
+        }
+
+        return Pool::batch($this->guzzle, $generator($requests), $options);
     }
 
     public function getCookies(): array
