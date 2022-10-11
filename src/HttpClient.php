@@ -2,13 +2,15 @@
 
 namespace HttpClient;
 
-use Choval\Async;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
+use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Pool;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 class HttpClient
@@ -23,14 +25,18 @@ class HttpClient
      */
     public function __construct(array $config = [])
     {
-        if (array_key_exists('cookies', $config) and is_array($config['cookies'])) {
+        if (isset($config['cookies']) and is_array($config['cookies'])) {
             $config['cookies'] = new CookieJar(false, $config['cookies']);
-        } elseif (!(array_key_exists('cookies', $config) and $config['cookies'] instanceof CookieJar)) {
+        } elseif (!(isset($config['cookies']) and $config['cookies'] instanceof CookieJar)) {
             $config['cookies'] = new CookieJar(false, []);
         }
 
-        $this->guzzle = new Client(['cookies' => $config['cookies']]);
+        if (!(isset($config['handler']) and $config['handler'] instanceof HandlerStack)) {
+            $config['handler'] = HandlerStack::create();
+        }
+
         $this->config = $config;
+        $this->guzzle = new Client(['cookies' => $config['cookies']]);
     }
 
     /**
@@ -85,25 +91,31 @@ class HttpClient
     {
         if (is_null($response)) {
             $response = $request->getWrapper();
+        } else {
+            $request->setWrapper($response);
         }
+
+        $handler = $request->handlerStack();
+
+        # retry connection
+        $handler->push(Middleware::retry(
+            function ($retries, RequestInterface $req, $resp, $e) use ($request) {
+                if ($e instanceof ConnectException and $retries < $request->connectAttempts()) {
+                    return true;
+                }
+
+                return false;
+            },
+            function ($attempts) use ($request) {
+                return $request->connectSleep() * 1000;
+            }), 'connect');
+
+        $request->setOption('handler', $handler);
+        $request->setOption('_request', $request); # for handling request in middleware
 
         $r = $this->guzzle->requestAsync($request->getMethod(), $request->getUri(), $request->getConfig())->then(
             function (ResponseInterface $r) use ($request, $response) {
                 return $response($r, $request->getBaseUri());
-            },
-            function ($r) use ($request, $response) {
-                $currentAttempt = $request->getOption('_currentAttempt') ?? 0;
-                if (++$currentAttempt < $request->connectAttempts()) {
-                    $request->setOption('_currentAttempt', $currentAttempt);
-                    $sleep = $request->connectSleep();
-                    if ($sleep > 0) {
-                        #TODO async sleep
-                    }
-
-                    return $this->send($request, $response);
-                } else {
-                    throw $r;
-                }
             }
         );
 

@@ -4,6 +4,7 @@ namespace HttpClient;
 
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\HandlerStack;
 
 class Request
 {
@@ -19,13 +20,13 @@ class Request
      */
     const DEFAULT_CONNECT_SLEEP = 0;
 
-    public function __construct(HttpClient $httpClient, $uri, array $specified = [])
+    public function __construct(HttpClient $httpClient, $uri, array $specifiedConfig = [])
     {
         $this->httpClient = &$httpClient;
         $this->uri = $uri;
         $this->config = $httpClient->getConfig();
 
-        foreach ($specified as $item) {
+        foreach ($specifiedConfig as $item) {
             if (is_array($item) and method_exists($this, $item[0])) {
                 $method = array_shift($item);
                 $this->$method(...$item);
@@ -349,5 +350,10 @@ class Request
     public function getResponse(Response $responseClass = null): Response
     {
         return $this->getHttpClient()->send($this, $responseClass);
+    }
+
+    public function handlerStack(): HandlerStack
+    {
+        return $this->getOption('handler');
     }
 }
