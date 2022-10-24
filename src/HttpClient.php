@@ -135,7 +135,7 @@ class HttpClient
      * this is delivered each failed request
      * function ($reason, $index) {}
      *
-     * @return array
+     * @return Response[]
      */
     public function batch(
         array $requests,
